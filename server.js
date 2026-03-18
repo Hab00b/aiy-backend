@@ -8,8 +8,8 @@ app.use(cors());
 
 const API_KEY = process.env.API_KEY;
 
-// ✅ MODEL CHUẨN (ổn định)
-const VERSION = "db21e45d1d2cce7e8e4b6d7c8e5e0cbb8e3e3c9e9f3e9c7e8b7e8c9e7e8c9e7";
+// ✅ DÙNG MODEL NAME (KHÔNG dùng version)
+const MODEL = "stability-ai/sdxl";
 
 app.post("/generate", async (req, res) => {
   const { prompt } = req.body;
@@ -22,7 +22,7 @@ app.post("/generate", async (req, res) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        version: VERSION,
+        model: MODEL,
         input: {
           prompt: prompt
         }
@@ -30,6 +30,7 @@ app.post("/generate", async (req, res) => {
     });
 
     const data = await response.json();
+
     console.log("CREATE:", data);
 
     res.json(data);
@@ -51,6 +52,7 @@ app.get("/result/:id", async (req, res) => {
     });
 
     const data = await response.json();
+
     console.log("RESULT:", data);
 
     res.json(data);
