@@ -8,26 +8,28 @@ app.use(cors());
 
 const API_KEY = process.env.API_KEY;
 
-// ✅ DÙNG MODEL NAME (KHÔNG dùng version)
+// ✅ MODEL CHUẨN
 const MODEL = "stability-ai/sdxl";
 
 app.post("/generate", async (req, res) => {
   const { prompt } = req.body;
 
   try {
-    const response = await fetch("https://api.replicate.com/v1/predictions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Token ${API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        input: {
-          prompt: prompt
-        }
-      })
-    });
+    const response = await fetch(
+      `https://api.replicate.com/v1/models/${MODEL}/predictions`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Token ${API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          input: {
+            prompt: prompt
+          }
+        })
+      }
+    );
 
     const data = await response.json();
 
@@ -45,11 +47,14 @@ app.get("/result/:id", async (req, res) => {
   const id = req.params.id;
 
   try {
-    const response = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
-      headers: {
-        "Authorization": `Token ${API_KEY}`
+    const response = await fetch(
+      `https://api.replicate.com/v1/predictions/${id}`,
+      {
+        headers: {
+          "Authorization": `Token ${API_KEY}`
+        }
       }
-    });
+    );
 
     const data = await response.json();
 
