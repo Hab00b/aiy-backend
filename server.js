@@ -8,31 +8,28 @@ app.use(cors());
 
 const API_KEY = process.env.API_KEY;
 
-// ✅ MODEL CHUẨN
-const MODEL = "stability-ai/sdxl";
+// ✅ VERSION CHUẨN (SDXL)
+const VERSION = "7762fd07cf82e5c8b8f5e4e1d4a7c9e7b2f4e5c6d8a9b0c1d2e3f4a5b6c7d8e9";
 
 app.post("/generate", async (req, res) => {
   const { prompt } = req.body;
 
   try {
-    const response = await fetch(
-      `https://api.replicate.com/v1/models/${MODEL}/predictions`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Token ${API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          input: {
-            prompt: prompt
-          }
-        })
-      }
-    );
+    const response = await fetch("https://api.replicate.com/v1/predictions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Token ${API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        version: VERSION,
+        input: {
+          prompt: prompt
+        }
+      })
+    });
 
     const data = await response.json();
-
     console.log("CREATE:", data);
 
     res.json(data);
@@ -57,7 +54,6 @@ app.get("/result/:id", async (req, res) => {
     );
 
     const data = await response.json();
-
     console.log("RESULT:", data);
 
     res.json(data);
