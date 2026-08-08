@@ -30,12 +30,11 @@ function verifyToken(req, res, next) {
 async function verifyAdmin(req, res, next) {
     try {
         const connection = await pool.getConnection();
-        const [rows] = await connection.execute('SELECT email FROM users WHERE id = ?', [req.user.id]);
+        const [rows] = await connection.execute('SELECT email, is_admin FROM users WHERE id = ?', [req.user.id]);
         connection.release();
 
         if (rows.length === 0) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
         
-        // Xác định quyền admin (ví dụ: email là admin@aiy.vn hoặc kiểm tra cờ is_admin trong DB)
         const isAdmin = rows[0].email === 'trinhquang1986@gmail.com' || rows[0].is_admin === 1;
         if (!isAdmin) {
             return res.status(403).json({ error: 'Bạn không có quyền truy cập khu vực quản trị' });
@@ -98,7 +97,7 @@ app.get('/api/user/profile', verifyToken, async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
         
         const user = rows[0];
-        user.is_admin = (user.email === 'admin@aiy.vn' || user.is_admin === 1);
+        user.is_admin = (user.email === 'trinhquang1986@gmail.com' || user.is_admin === 1);
 
         res.json({ success: true, user });
     } catch (error) {
@@ -108,7 +107,17 @@ app.get('/api/user/profile', verifyToken, async (req, res) => {
 
 // API Tạo ảnh AI
 app.post('/api/ai/generate', verifyToken, async (req, res) => {
-    const { prompt, imageUrl: refImage } = req.body;
+    const { 
+        prompt, 
+        negativePrompt, 
+        model, 
+        cfgScale, 
+        steps, 
+        seed, 
+        aspectRatio, 
+        imageUrl: refImage 
+    } = req.body;
+
     if (!prompt) return res.status(400).json({ error: 'Thiếu nội dung câu lệnh (prompt)' });
 
     const connection = await pool.getConnection();
@@ -126,6 +135,11 @@ app.post('/api/ai/generate', verifyToken, async (req, res) => {
         // Định nghĩa dữ liệu đầu vào cho Replicate API
         const replicateInput = {
             prompt: prompt,
+            negative_prompt: negativePrompt || '',
+            cfg_scale: cfgScale || 7.5,
+            num_inference_steps: steps || 40,
+            aspect_ratio: aspectRatio || '1:1',
+            ...(seed && seed !== -1 && { seed: seed }),
             ...(refImage && { image: refImage })
         };
 
@@ -140,9 +154,9 @@ app.post('/api/ai/generate', verifyToken, async (req, res) => {
                 headers: {
                     'Authorization': `Bearer ${process.env.REPLICATE_API_TOKEN}`,
                     'Content-Type': 'application/json',
-                    'Prefer': 'wait' // Yêu cầu chờ kết quả trả về trực tiếp
+                    'Prefer': 'wait'
                 },
-                timeout: 60000 // Timeout 60 giây chờ render ảnh
+                timeout: 60000
             }
         );
 
@@ -157,7 +171,7 @@ app.post('/api/ai/generate', verifyToken, async (req, res) => {
             return res.status(500).json({ error: 'Hệ thống AI không thể trả về hình ảnh, vui lòng thử lại' });
         }
 
-        // Trừ 1 credit trong database
+        // Trừ 1 credit trong database và lưu lịch sử
         await connection.execute('UPDATE users SET credits = credits - 1 WHERE id = ?', [req.user.id]);
         await connection.execute(
             'INSERT INTO generations (user_id, prompt, image_url) VALUES (?, ?, ?)',
@@ -176,7 +190,7 @@ app.post('/api/ai/generate', verifyToken, async (req, res) => {
     } catch (error) {
         await connection.rollback();
         connection.release();
-        console.error('Lỗi hệ thống AI:', error.message);
+        console.error('Lỗi hệ thống AI:', error.response?.data || error.message);
         res.status(500).json({ error: 'Lỗi kết nối đến động cơ AI' });
     }
 });
